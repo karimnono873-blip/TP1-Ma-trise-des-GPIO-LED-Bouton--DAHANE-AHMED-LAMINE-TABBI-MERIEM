@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compte Rendu TP1 - GPIO</title>
+    <style>
+        /* ================= VARIABLES & THEME ================= */
+        :root {
+            --pixel-blue: #8AB4F8;
+            --pixel-dark-blue: #1A73E8;
+            --pixel-violet: #A142F4;
+            --pixel-dark-violet: #6A1B9A;
+            --bg-deep-space: #0B0B1A;
+            --glass-bg: rgba(25, 25, 45, 0.6);
+            --glass-border: rgba(138, 180, 248, 0.2);
+            --text-main: #E8EAED;
+            --text-muted: #9AA0A6;
+            --glow-shadow: 0 0 20px rgba(161, 66, 244, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-deep-space);
+            color: var(--text-main);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* ================= ASTRONOMIC BACKGROUND ================= */
+        .stars {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: 
+                radial-gradient(circle at 15% 50%, rgba(106, 27, 154, 0.2), transparent 40%),
+                radial-gradient(circle at 85% 30%, rgba(26, 115, 232, 0.2), transparent 40%);
+        }
+        
+        .star {
+            position: absolute;
+            background-color: white;
+            border-radius: 50%;
+            animation: twinkle infinite alternate;
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.2; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 5px white; }
+        }
+
+        /* ================= LAYOUT & GLASSMORPHISM ================= */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-panel:hover {
+            box-shadow: var(--glow-shadow);
+            transform: translateY(-2px);
+        }
+
+        /* ================= HEADER ================= */
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-top: 2rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            background: linear-gradient(90deg, var(--pixel-blue), var(--pixel-violet));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 30px rgba(161, 66, 244, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .authors {
+            font-weight: bold;
+            color: var(--pixel-blue);
+        }
+
+        /* ================= TABS (MANIPULATIONS) ================= */
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--pixel-blue);
+            color: var(--pixel-blue);
+            padding: 0.8rem 1.5rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover, .tab-btn.active {
+            background: var(--pixel-blue);
+            color: var(--bg-deep-space);
+            box-shadow: 0 0 15px var(--pixel-blue);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ================= CODE BLOCKS ================= */
+        pre {
+            background: #0d0d1a;
+            border-left: 4px solid var(--pixel-violet);
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            color: #a6accd;
+            margin-top: 1rem;
+        }
+        
+        code .keyword { color: #89ddff; }
+        code .function { color: #82aaff; }
+        code .comment { color: #546e7a; font-style: italic; }
+        code .string { color: #c3e88d; }
+
+        /* ================= ACCORDION (POST-LAB) ================= */
+        .accordion {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            cursor: pointer;
+            padding: 1.2rem;
+            width: 100%;
+            text-align: left;
+            border: none;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            outline: none;
+            transition: 0.4s;
+            font-size: 1.1rem;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .accordion:first-child {
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+        }
+
+        .accordion:hover, .accordion.active {
+            background: rgba(161, 66, 244, 0.15);
+            color: var(--pixel-blue);
+        }
+
+        .accordion::after {
+            content: '+';
+            font-size: 1.5rem;
+            color: var(--pixel-violet);
+        }
+
+        .accordion.active::after {
+            content: '−';
+        }
+
+        .panel {
+            padding: 0 1.2rem;
+            background: rgba(0, 0, 0, 0.2);
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, padding 0.3s ease;
+        }
+
+        .panel p {
+            padding: 1rem 0;
+            color: var(--text-muted);
+        }
+
+        /* ================= HARDWARE VISUALIZATION ================= */
+        .hardware-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            margin: 2rem 0;
+            padding: 2rem;
+            background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+            border-radius: 16px;
+        }
+
+        .board {
+            width: 120px;
+            height: 180px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            position: relative;
+            box-shadow: 0 0 20px rgba(255,255,255,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .board::before {
+            content: "NUCLEO";
+            color: #333;
+            font-weight: bold;
+            font-size: 0.8rem;
+            margin-top: 10px;
+        }
+
+        .chip {
+            width: 40px;
+            height: 40px;
+            background: #222;
+            margin-top: 20px;
+            border-radius: 4px;
+        }
+
+        .pin {
+            width: 10px;
+            height: 10px;
+            background: #333;
+            border-radius: 50%;
+            position: absolute;
+        }
+
+        .pin.pa5 { right: 10px; top: 50px; background: var(--pixel-blue); box-shadow: 0 0 10px var(--pixel-blue); }
+        .pin.pc13 { left: 10px; bottom: 30px; background: var(--pixel-violet); box-shadow: 0 0 10px var(--pixel-violet); }
+
+        .component {
+            text-align: center;
+        }
+
+        .led-viz {
+            width: 30px;
+            height: 30px;
+            background: #444;
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            transition: all 0.3s ease;
+        }
+
+        .led-viz.on {
+            background: #00ff00;
+            box-shadow: 0 0 20px #00ff00, inset 0 0 10px white;
+        }
+
+        .btn-viz {
+            width: 40px;
+            height: 40px;
+            background: var(--pixel-dark-blue);
+            border-radius: 8px;
+            margin: 0 auto 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #0d47a1;
+        }
+
+        .btn-viz:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #0d47a1;
+        }
+
+        .wire {
+            height: 4px;
+            background: #555;
+            width: 60px;
+            position: relative;
+        }
+        
+        .wire::after {
+            content: '';
+            position: absolute;
+            top: -10px; left: 50%;
+            color: #aaa;
+            font-size: 0.7rem;
+            transform: translateX(-50%);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="stars" id="stars"></div>
+
+    <div class="container">
+        <header>
+            <h1>TP 1 : Maîtrise des GPIO</h1>
+            <p class="subtitle">Systèmes Embarqués - STM32 Nucleo-C031C6</p>
+            <p class="authors">Réalisé par : Dahane Ahmed Lamine & Tabbi Meriem</p>
+            <p class="subtitle" style="font-size: 0.9rem; margin-top: 5px;">Enseignante : Afaf Saoud</p>
+        </header>
+
+        <section class="glass-panel">
+            <h2 style="color: var(--pixel-blue); margin-bottom: 1rem;">Visualisation du Montage</h2>
+            <div class="hardware-container">
+                <div class="component">
+                    <div class="btn-viz" id="sim-btn"></div>
+                    <p>Bouton (PC13)</p>
+                </div>
+                <div class="wire" style="background: var(--pixel-violet);"></div>
+                <div class="board">
+                    <div class="chip"></div>
+                    <div class="pin pc13" title="PC13"></div>
+                    <div class="pin pa5" title="PA5"></div>
+                </div>
+                <div class="wire" style="background: var(--pixel-blue);"></div>
+                <div class="component">
+                    <div class="led-viz" id="sim-led"></div>
+                    <p>LED Externe (PA5)</p>
+                </div>
+            </div>
+            <p style="text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+                *Montage interactif : Cliquez sur le bouton bleu ci-dessus pour simuler l'appui.*
+            </p>
+        </section>
+
+        <section class="glass-panel">
+            <h2 style="color: var(--pixel-violet); margin-bottom: 1rem;">Les Manipulations C (Code source)</h2>
+            
+            <div class="tabs">
+                <button class="tab-btn active" onclick="openTab(event, 'part1')">1. Application de base</button>
+                <button class="tab-btn" onclick="openTab(event, 'part2')">2. Test Toggle (500ms)</button>
+                <button class="tab-btn" onclick="openTab(event, 'defi')">3. Le Défi (Variateur)</button>
+            </div>
+
+            <div id="part1" class="tab-content active">
+                <h3>Application : Bouton Poussoir Maintenu</h3>
+                <p style="color: var(--text-muted);">Objectif : Allumer la LED uniquement lorsque le bouton est enfoncé. Utilisation de la lecture directe d'état logique.</p>
+                <pre><code><span class="comment">// Extrait du while(1) - main.c</span>
+<span class="keyword">if</span> (<span class="function">HAL_GPIO_ReadPin</span>(GPIOC, GPIO_PIN_13) == GPIO_PIN_RESET)
+{
+    <span class="comment">// Bouton appuyé (RESET car Pull-up) = On allume la LED</span>
+    <span class="function">HAL_GPIO_WritePin</span>(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
+}
+<span class="keyword">else</span>
+{
+    <span class="comment">// Bouton relâché = On éteint la LED</span>
+    <span class="function">HAL_GPIO_WritePin</span>(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
+}</code></pre>
+            </div>
+
+            <div id="part2" class="tab-content">
+                <h3>Test : Clignotement TogglePin</h3>
+                <p style="color: var(--text-muted);">Objectif : Faire clignoter la LED avec un cycle de 500ms en utilisant la fonction d'inversion d'état.</p>
+                <pre><code><span class="comment">// Extrait du while(1) - main.c</span>
+<span class="keyword">while</span> (1)
+{
+    <span class="comment">// On inverse l'état actuel de la broche PA5</span>
+    <span class="function">HAL_GPIO_TogglePin</span>(GPIOA, GPIO_PIN_5);
+    
+    <span class="comment">// Pause bloquante de 500 millisecondes</span>
+    <span class="function">HAL_Delay</span>(500);
+}</code></pre>
+            </div>
+
+            <div id="defi" class="tab-content">
+                <h3>Le Défi : Variateur de Vitesse (Pro Level)</h3>
+                <p style="color: var(--text-muted);">Objectif : Changer la vitesse (1000ms, 200ms, Fixe) à chaque appui. <strong>Solution implémentée :</strong> Machine à états non-bloquante avec <code>HAL_GetTick()</code> pour garantir la détection instantanée du bouton.</p>
+                <pre><code><span class="comment">// Extrait du while(1) - main.c</span>
+uint32_t temps_actuel = <span class="function">HAL_GetTick</span>();
+uint8_t etat_bouton_actuel = <span class="function">HAL_GPIO_ReadPin</span>(GPIOC, GPIO_PIN_13);
+
+<span class="comment">// 1. DÉTECTION DU BOUTON (Anti-rebond)</span>
+<span class="keyword">if</span> (etat_bouton_actuel == GPIO_PIN_RESET && etat_bouton_precedent == GPIO_PIN_SET) {
+    <span class="function">HAL_Delay</span>(50); 
+    <span class="keyword">if</span> (<span class="function">HAL_GPIO_ReadPin</span>(GPIOC, GPIO_PIN_13) == GPIO_PIN_RESET) {
+        mode++; 
+        <span class="keyword">if</span> (mode > 2) mode = 0; 
+        <span class="keyword">if</span> (mode == 2) <span class="function">HAL_GPIO_WritePin</span>(GPIOA, GPIO_PIN_5, GPIO_PIN_SET); 
+    }
+}
+etat_bouton_precedent = etat_bouton_actuel;
+
+<span class="comment">// 2. GESTION DE LA LED (Non-bloquant)</span>
+<span class="keyword">if</span> (mode == 0) { <span class="comment">// Lent</span>
+    <span class="keyword">if</span> (temps_actuel - dernier_temps >= 1000) {
+        dernier_temps = temps_actuel;
+        <span class="function">HAL_GPIO_TogglePin</span>(GPIOA, GPIO_PIN_5);
+    }
+} <span class="keyword">else if</span> (mode == 1) { <span class="comment">// Rapide</span>
+    <span class="keyword">if</span> (temps_actuel - dernier_temps >= 200) {
+        dernier_temps = temps_actuel;
+        <span class="function">HAL_GPIO_TogglePin</span>(GPIOA, GPIO_PIN_5);
+    }
+}</code></pre>
+            </div>
+        </section>
+
+        <section class="glass-panel">
+            <h2 style="color: var(--pixel-blue); margin-bottom: 1rem;">Questions Post-Lab (Cahier des charges)</h2>
+            
+            <button class="accordion">1. Pourquoi la broche PA5 est-elle configurée en GPIO_Output et pas en GPIO_Input ?</button>
+            <div class="panel">
+                <p>La broche PA5 doit agir comme une source de tension/courant pour alimenter la LED (Output). Une broche configurée en entrée (Input) sert uniquement à lire un état électrique extérieur, elle ne peut pas fournir l'énergie nécessaire pour allumer un composant.</p>
+            </div>
+
+            <button class="accordion">2. À quoi sert l'option Pull-up sur la broche du bouton (PC13) ?</button>
+            <div class="panel">
+                <p>Elle force la broche à un état logique HAUT (3.3V / SET) lorsque le bouton n'est pas appuyé. Sans cela, la broche serait "flottante" et capterait des bruits électromagnétiques, provoquant des lectures aléatoires (faux appuis).</p>
+            </div>
+
+            <button class="accordion">3. Quelle est la différence entre HAL_GPIO_WritePin() et HAL_GPIO_TogglePin() ?</button>
+            <div class="panel">
+                <p><code>WritePin()</code> force la broche à un état absolu et précis (soit 0, soit 1). <code>TogglePin()</code> lit l'état actuel de la broche et l'inverse automatiquement (si c'est 0 ça devient 1, et inversement).</p>
+            </div>
+
+            <button class="accordion">4. Pourquoi doit-on appeler HAL_Init() au tout début du main ?</button>
+            <div class="panel">
+                <p>Cette fonction est vitale : elle initialise la couche d'abstraction matérielle (HAL), configure le Flash prefetch, et surtout, elle démarre le timer système (SysTick) qui est indispensable pour utiliser les fonctions de délai comme <code>HAL_Delay()</code> et <code>HAL_GetTick()</code>.</p>
+            </div>
+
+            <button class="accordion">5. Que se passe-t-il si j'oublie la macro __HAL_RCC_GPIOA_CLK_ENABLE() ?</button>
+            <div class="panel">
+                <p>Par défaut, pour économiser l'énergie, les horloges des périphériques STM32 sont éteintes. Si on oublie cette macro, le port A n'est pas alimenté. L'écriture dans ses registres de configuration sera ignorée par le processeur, et la LED ne s'allumera pas.</p>
+            </div>
+
+            <button class="accordion">6. C'est quoi le phénomène de "Rebond" (Bouncing) sur un bouton mécanique ?</button>
+            <div class="panel">
+                <p>Lorsqu'on appuie sur un bouton physique, les contacts métalliques à l'intérieur vibrent ou "rebondissent" microscopiquement avant de se stabiliser. Le microcontrôleur est si rapide qu'il interprète ces vibrations comme plusieurs dizaines d'appuis très rapides au lieu d'un seul.</p>
+            </div>
+
+            <button class="accordion">7. Si je veux brancher une LED sur PA0 sans résistance, puis-je configurer la broche pour limiter le courant ?</button>
+            <div class="panel">
+                <p><strong>Non, c'est dangereux.</strong> Bien que les broches aient des résistances internes (pull-up/pull-down), elles sont conçues pour des signaux logiques (faible courant, ~40kΩ) et rendraient la LED invisible. Configurée en sortie standard, la broche délivrera trop de courant, ce qui risque de griller la LED ou, pire, d'endommager le port du microcontrôleur. Une résistance externe est obligatoire.</p>
+            </div>
+
+            <button class="accordion">8. Dans le défi (mode lent) : Que se passe-t-il si j'appuie pendant le HAL_Delay(1000) ?</button>
+            <div class="panel">
+                <p>Le microcontrôleur est totalement "bloqué" (gelé) pendant ce délai. Tout appui sur le bouton relâché avant la fin de la seconde sera <strong>ignoré</strong>. Le changement n'est absolument pas instantané.</p>
+            </div>
+
+            <button class="accordion">9. Comment détecter le bouton immédiatement pendant un clignotement lent ?</button>
+            <div class="panel">
+                <p>Il faut abandonner <code>HAL_Delay()</code>. La solution professionnelle (utilisée dans notre code du défi) est de créer une <strong>Machine à états non-bloquante</strong> utilisant <code>HAL_GetTick()</code> pour mesurer le temps écoulé sans geler le CPU. Une autre excellente solution matérielle consiste à utiliser les <strong>Interruptions externes (EXTI)</strong>.</p>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // 1. Generate Stars
+        const starContainer = document.getElementById('stars');
+        for (let i = 0; i < 150; i++) {
+            let star = document.createElement('div');
+            star.className = 'star';
+            star.style.width = Math.random() * 3 + 'px';
+            star.style.height = star.style.width;
+            star.style.left = Math.random() * 100 + 'vw';
+            star.style.top = Math.random() * 100 + 'vh';
+            star.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            star.style.animationDelay = Math.random() * 5 + 's';
+            starContainer.appendChild(star);
+        }
+
+        // 2. Tabs Logic
+        function openTab(evt, tabName) {
+            let i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+                tabcontent[i].classList.remove("active");
+            }
+            tablinks = document.getElementsByClassName("tab-btn");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            setTimeout(() => document.getElementById(tabName).classList.add("active"), 10);
+            evt.currentTarget.className += " active";
+        }
+
+        // 3. Accordion Logic
+        var acc = document.getElementsByClassName("accordion");
+        for (let i = 0; i < acc.length; i++) {
+            acc[i].addEventListener("click", function() {
+                this.classList.toggle("active");
+                var panel = this.nextElementSibling;
+                if (panel.style.maxHeight) {
+                    panel.style.maxHeight = null;
+                } else {
+                    panel.style.maxHeight = panel.scrollHeight + "px";
+                } 
+            });
+        }
+
+        // 4. Hardware Simulation Logic (Just for fun UI interaction)
+        const simBtn = document.getElementById('sim-btn');
+        const simLed = document.getElementById('sim-led');
+        
+        simBtn.addEventListener('mousedown', () => simLed.classList.add('on'));
+        simBtn.addEventListener('mouseup', () => simLed.classList.remove('on'));
+        simBtn.addEventListener('mouseleave', () => simLed.classList.remove('on'));
+        // Touch support
+        simBtn.addEventListener('touchstart', (e) => { e.preventDefault(); simLed.classList.add('on'); });
+        simBtn.addEventListener('touchend', (e) => { e.preventDefault(); simLed.classList.remove('on'); });
+    </script>
+</body>
+</html>
